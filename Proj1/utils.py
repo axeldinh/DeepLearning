@@ -6,7 +6,7 @@ class Metrics():
         -train_losses
         -test_losses
         -accuracy
-    Each of them consist in a list of lists containing the metrics at each epoch, e.g
+    Each of them consist in a list of lists containing the metrics at each epoch and training, e.g
     [ [loss_epoch1_training1, ..., loss_epoch25_training1], ..., [loss_epoch1_training10, ..., loss_epoch25_training10] ]
     """
     
@@ -17,9 +17,15 @@ class Metrics():
         self.accuracies = []
 
 
-def train(model, criterion, optimizer, train_input, train_target, test_input, test_target, mini_batch_size, epochs = 25):
+def train(model, criterion, optimizer,
+          train_input, train_target, train_classes,
+          test_input, test_target, test_classes,
+          mini_batch_size, epochs = 25, output_type = 'target'):
     """
     Trains a model for some epochs with a batch size of mini_batch_size
+    Parameters:
+        output_type (str): 'target' or 'classes', defines the output of the model and the dataset to use in criterion()
+                            So that we can train either on the classes or targets
     Returns:
         -train_losses (list): list of the train losses per epoch
         -test_losses (list): list of the test losses per epoch
@@ -41,14 +47,17 @@ def train(model, criterion, optimizer, train_input, train_target, test_input, te
             
             optimizer.zero_grad()
             output = model(train_input.narrow(0, b, mini_batch_size))
-            loss = criterion(output, train_target.narrow(0, b, mini_batch_size))
+            if output_type == 'target':
+                loss = criterion(output, train_target.narrow(0, b, mini_batch_size))
+            elif output_type == 'classes':
+                loss = criterion(output, train_classes.narrow(0, b, mini_batch_size))
             loss.backward()
             optimizer.step()
             
             train_loss += loss
             
         train_loss /= mini_batch_size
-        accuracy, test_loss = evaluate(model, criterion, test_input, test_target, mini_batch_size)
+        accuracy, test_loss = evaluate(model, criterion, test_input, test_target, test_classes, mini_batch_size, output_type)
         
         train_losses.append(train_loss.item())
         test_losses.append(test_loss.item())
@@ -56,9 +65,12 @@ def train(model, criterion, optimizer, train_input, train_target, test_input, te
         
     return train_losses, test_losses, accuracies
 
-def evaluate(model, criterion, test_input, test_target, mini_batch_size):
+def evaluate(model, criterion, test_input, test_target, test_classes, mini_batch_size, output_type):
     """
     Evaluate the model on the test set
+    Parameters:
+        output_type (str): 'target' or 'classes', defines the output of the model and the dataset to use in criterion()
+                            and how to compute the error
     Returns:
         -accuracy (torch.tensor): shape (1)
         -test_loss (torch.tensor): shape(1)
@@ -72,15 +84,23 @@ def evaluate(model, criterion, test_input, test_target, mini_batch_size):
         for b in range(0, test_input.size(0), mini_batch_size):
 
             output = model(test_input.narrow(0, b, mini_batch_size))
-            loss += criterion(output, test_target.narrow(0, b, mini_batch_size))
-            _, predictions = torch.max(output, dim = -1)
-            predicted += torch.sum(predictions == test_target.narrow(0, b, mini_batch_size))
+            if output_type == 'target':
+                loss += criterion(output, test_target.narrow(0, b, mini_batch_size))
+                _, predictions = torch.max(output, dim = -1)
+                predicted += torch.sum(predictions == test_target.narrow(0, b, mini_batch_size))
+            elif output_type == 'classes':
+                loss += criterion(output, test_classes.narrow(0, b, mini_batch_size))
+                _, predictions = torch.max(output, dim = -1)
+                predictions = (predictions[:,0] <= predictions[:,1]).float()
+                predicted += torch.sum( predictions == test_target.narrow(0, b, mini_batch_size))
         
     accuracy = predicted / test_input.size(0)
         
     return  accuracy, loss / mini_batch_size
 
-def many_trains(Modelfun, criterion, optimizer, train_input, train_target, test_input, test_target, mini_batch_size, num_trains, epochs = 25):
+def many_trains(Modelfun, criterion, optimizer, train_input, train_target, train_classes,
+                test_input, test_target, test_classes,
+                mini_batch_size, output_type, num_trains, epochs = 25):
     """
     Trains the model num_trains times, so that we can get standard deviations
     Parameters:
@@ -96,6 +116,7 @@ def many_trains(Modelfun, criterion, optimizer, train_input, train_target, test_
     
     for n_train in range(num_trains):
         
+        # Reinitialize the model and set the optimizer's parameters to the model paramaters keeping everything the same
         model = Modelfun()
         optimizer.param_groups = [{'params': [p for p in model.parameters()],
                                    'lr': optimizer.defaults['lr'],
@@ -105,8 +126,10 @@ def many_trains(Modelfun, criterion, optimizer, train_input, train_target, test_
                                    'nesterov': optimizer.defaults['nesterov']}]
         
         print(f"Training {n_train+1}: ", end = '')
-        train_losses, test_losses, accuracies = train(model, criterion, optimizer, train_input, train_target,
-                                                      test_input, test_target, mini_batch_size, epochs)
+        train_losses, test_losses, accuracies = train(model, criterion, optimizer,
+                                                      train_input, train_target, train_classes,
+                                                      test_input, test_target, test_classes,
+                                                      mini_batch_size, epochs, output_type)
         
         metrics.train_losses.append(train_losses)
         metrics.test_losses.append(test_losses)
