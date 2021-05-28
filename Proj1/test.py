@@ -97,21 +97,21 @@ print("Note that the new results might not be the best results, but should be cl
 print("Loading the results...")
 AuxiliaryConvNet = torch.load('results/AuxiliaryConvNet.pt')
 
-aux_coef = 2
+best_coef = 100
 convnet_config = [ [1, 128, 32], 50, True] # [ channels, hidden, digit ]
-config = [ConvNet, convnet_config, weight_sharing, aux_coef] # [Model_fn, config, weight_sharing, aux_coeff]
+config = [ConvNet, convnet_config, weight_sharing, best_coef] # [Model_fn, config, weight_sharing, aux_coeff]
 model = AuxModel(*config)
 optimizer = torch.optim.Adam(model.parameters(), lr = 1e-2)
 num_params = compute_number_parameters(model)
-print("Training a ConvNet in a Siamese fashion with {} parameters, with Weight-Sharing and an auxiliary coefficient of 2...".format(num_params))
+print("Training a ConvNet in a Siamese fashion with {} parameters, with Weight-Sharing and an auxiliary coefficient of {}...".format(num_params, best_coef))
 mean, std, metrics = get_mean_std(AuxModel, config, optimizer, mini_batch_size, num_trains, epochs = epochs, device = device)
 print("Training over...\n")
 
 # Replace the already computed results by the results we just computed
-AuxiliaryConvNet['AuxConvNet_'+str(aux_coef)]['mean'] = mean
-AuxiliaryConvNet['AuxConvNet_'+str(aux_coef)]['std'] = std
-AuxiliaryConvNet['AuxConvNet_'+str(aux_coef)]['metrics'] = metrics
-AuxiliaryConvNet['AuxConvNet_'+str(aux_coef)]['num_params'] = num_params
+AuxiliaryConvNet['AuxConvNet_'+str(best_coef)]['mean'] = mean
+AuxiliaryConvNet['AuxConvNet_'+str(best_coef)]['std'] = std
+AuxiliaryConvNet['AuxConvNet_'+str(best_coef)]['metrics'] = metrics
+AuxiliaryConvNet['AuxConvNet_'+str(best_coef)]['num_params'] = num_params
 
 # print the results
 aux_coeffs = [1e-2, 1e-1, 1, 2, 5, 10, 100]
@@ -122,7 +122,7 @@ for aux_coef in aux_coeffs:
     std = AuxiliaryConvNet['AuxConvNet_'+str(aux_coef)]['std']
     num_params = AuxiliaryConvNet['AuxConvNet_'+str(aux_coef)]['num_params']
     print(f"For a ConvNet with {num_params} parameters, Weight-Sharing and {aux_coef} auxiliary coefficient:")
-    if aux_coef = 2:
+    if aux_coef == best_coef:
         print("This is the model we just trained")
     print("\tMean best test accuracy = {:.2f}%(+-{:.2f})\n".format(mean*100, std*100))
 
