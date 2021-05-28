@@ -7,11 +7,10 @@ import matplotlib.pyplot as plt
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Booleans to load or not the different parts
-load_1 = False
-load_2 = False
-load_3 = False
+load_1 = True
+load_2 = True
+load_3 = True
 
-# All experiences are run 25 times with 25 epochs and batch size of 100
 mini_batch_size = 100
 epochs = 50
 num_trains = 15
@@ -82,7 +81,7 @@ for model in ['MLP', 'ConvNet']:
 #   We either declare 2 MLP/ConvNet for each digit or 1 for both to see the effect of weight-sharing
 
 print("#######################################################")
-print("Part 2 - Training of a MLP and a ConvNet trained on the AuxModel with/without weight-sharing, but no auxiliary losses:\n")
+print("Part 2 - Training of a MLP and a ConvNet trained on the AuxModel (the Siamese model) with/without weight-sharing, but no auxiliary losses:\n")
 
 # Training of a MLP in AuxModel:
 
