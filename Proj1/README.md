@@ -8,7 +8,7 @@ To run the classical models implemented here with their top hyperparameters run 
 Following libraries are required:
 - Pytorch
 
-To generate the graphs, run the gen_figures_results.py (about 1 hour run).
+To generate the graphs, run the gen_figures_results.py (about 1 hour run). If you do not want to wait that long, please set Load_1/Load_2/Load_3 to True, this will load already computed results and show them/make the plots.
 
 Additional libraries would be needed:
 - Matplotlib
